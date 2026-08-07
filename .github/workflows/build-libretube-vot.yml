@@ -105,6 +105,9 @@ jobs:
       - name: Validate bundle metadata
         run: plutil -lint macos/Info.plist
 
+      - name: Apply Swift 6 compatibility
+        run: python3 macos/patch_swift6.py
+
       - name: Build native Apple Silicon app
         shell: bash
         run: |
@@ -118,6 +121,7 @@ jobs:
           SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
           xcrun swiftc \
             -swift-version 5 \
+            -Xfrontend -strict-concurrency=minimal \
             -O \
             -whole-module-optimization \
             -sdk "$SDKROOT" \
