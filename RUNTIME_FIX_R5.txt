@@ -1,0 +1,7 @@
+LibreTube-VOT r5 runtime fix
+
+- direct Yandex VOT API first (Android has no browser CORS restriction)
+- fallback across multiple public VOT workers
+- multiple audio proxy fallbacks
+- correct firstRequest flag on polling requests
+- clearer transport errors
