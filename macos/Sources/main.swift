@@ -1,10 +1,20 @@
 import AppKit
 
-@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var playerWindowController: PlayerWindowController?
+    @MainActor private var playerWindowController: PlayerWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            self?.launchApplicationUI()
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
+    @MainActor
+    private func launchApplicationUI() {
         installMainMenu()
 
         let controller = PlayerWindowController()
@@ -19,10 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
-    }
-
+    @MainActor
     private func installMainMenu() {
         let mainMenu = NSMenu()
 
