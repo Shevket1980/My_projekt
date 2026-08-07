@@ -55,6 +55,7 @@ jobs:
           cp integration/app/src/main/res/values/vot_strings.xml LibreTube/app/src/main/res/values/vot_strings.xml
           cp integration/app/src/main/res/values-ru/vot_strings.xml LibreTube/app/src/main/res/values-ru/vot_strings.xml
           python3 integration/apply_vot_voice_modes.py LibreTube
+          python3 integration/apply_vot_button_r9.py LibreTube
 
       - name: Verify patch markers
         run: |
@@ -68,6 +69,8 @@ jobs:
           grep -q 'isLivelyVoice' LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
           grep -q 'getVideoTitle' LibreTube/app/src/main/java/com/github/libretube/ui/interfaces/CustomPlayerCallback.kt
           grep -q 'vot_lively_voices_title' LibreTube/app/src/main/res/values-ru/vot_strings.xml
+          grep -q 'binding.votToggle.bringToFront()' LibreTube/app/src/main/java/com/github/libretube/ui/views/CustomExoPlayerView.kt
+          grep -q 'style="@style/PlayerControlBottom"' LibreTube/app/src/main/res/layout/exo_styled_player_control_view.xml
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotAudioController.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
@@ -80,14 +83,14 @@ jobs:
         run: |
           APK="$(find LibreTube/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
           test -n "$APK"
-          cp "$APK" LibreTube-VOT-v31.4-debug.apk
-          sha256sum LibreTube-VOT-v31.4-debug.apk > LibreTube-VOT-v31.4-debug.apk.sha256
+          cp "$APK" LibreTube-VOT-v31.4-r9-debug.apk
+          sha256sum LibreTube-VOT-v31.4-r9-debug.apk > LibreTube-VOT-v31.4-r9-debug.apk.sha256
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LibreTube-VOT-v31.4-debug
+          name: LibreTube-VOT-v31.4-r9-debug
           path: |
-            LibreTube-VOT-v31.4-debug.apk
-            LibreTube-VOT-v31.4-debug.apk.sha256
+            LibreTube-VOT-v31.4-r9-debug.apk
+            LibreTube-VOT-v31.4-r9-debug.apk.sha256
           if-no-files-found: error
