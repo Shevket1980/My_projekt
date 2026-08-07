@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="vot_voice_translation">Голосовой перевод</string>
-    <string name="vot_requesting_translation">Готовлю голосовой перевод… Нажмите ещё раз, чтобы отменить.</string>
+    <string name="vot_requesting_translation">Запрашиваю голосовой перевод…</string>
+    <string name="vot_translation_processing">Видео переводится…</string>
+    <string name="vot_translation_eta">Видео переводится • Осталось %1$s</string>
+    <string name="vot_translation_delayed">Видео переводится • Перевод немного задерживается</string>
     <string name="vot_translation_enabled">Голосовой перевод включён</string>
     <string name="vot_translation_disabled">Голосовой перевод выключен</string>
     <string name="vot_translation_failed">Ошибка голосового перевода: %1$s</string>
     <string name="vot_live_not_supported">Перевод прямых эфиров в этой сборке пока не включён</string>
+    <string name="vot_voice_mode_title">Голоса перевода</string>
+    <string name="vot_standard_voices_title">Обычные голоса</string>
+    <string name="vot_standard_voices_subtitle">Быстрое и качественное озвучивание</string>
+    <string name="vot_lively_voices_title">Живые голоса</string>
+    <string name="vot_lively_voices_subtitle">Максимальное сходство. Будто все знают русский</string>
+    <string name="vot_start_translation">Включить</string>
+    <string name="vot_processing_standard">Видео переводится • Обычные голоса</string>
+    <string name="vot_processing_lively">Видео переводится • Живые голоса</string>
+    <string name="vot_translation_eta_standard">Видео переводится • Обычные голоса • Осталось %1$s</string>
+    <string name="vot_translation_eta_lively">Видео переводится • Живые голоса • Осталось %1$s</string>
+    <string name="vot_standard_enabled">Обычные голоса включены</string>
+    <string name="vot_lively_enabled">Живые голоса включены</string>
+    <string name="vot_lively_fallback">Живые голоса недоступны — включены обычные</string>
 </resources>

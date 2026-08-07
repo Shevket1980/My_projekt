@@ -1,0 +1,257 @@
+--- a/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
++++ b/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
+@@ -27,16 +27,22 @@
+     private val directHost: String = DEFAULT_DIRECT_HOST,
+     private val workerHosts: List<String> = DEFAULT_WORKERS,
+ ) {
++    enum class VoiceMode { STANDARD, LIVELY }
++
+     data class TranslationResult(
+         val audioUrl: String,
+         val fallbackAudioUrls: List<String> = emptyList(),
+         val detectedLanguage: String? = null,
++        val requestedVoiceMode: VoiceMode = VoiceMode.STANDARD,
++        val usedVoiceMode: VoiceMode = VoiceMode.STANDARD,
+     )
+ 
+     data class TranslationProgress(
+         val remainingSeconds: Int? = null,
+         val delayed: Boolean = false,
+         val serverMessage: String? = null,
++        val voiceMode: VoiceMode = VoiceMode.STANDARD,
++        val fallbackToStandard: Boolean = false,
+     )
+ 
+     private data class Session(
+@@ -60,31 +66,60 @@
+         sourceLanguage: String = "auto",
+         targetLanguage: String = "ru",
+         title: String = "",
++        voiceMode: VoiceMode = VoiceMode.STANDARD,
++        oauthToken: String? = null,
+         onProgress: (TranslationProgress) -> Unit = {},
+     ): TranslationResult = withContext(Dispatchers.IO) {
++        val requestedVoiceMode = voiceMode
++        var activeVoiceMode = voiceMode
++        var effectiveSourceLanguage = sourceLanguage
+         var sentAudioFallback = false
+         var lastMessage = ""
+         var retryAttempt = 0
+         var firstRequest = true
++        var fellBackToStandard = false
+ 
+-        onProgress(TranslationProgress())
++        // Current VOT only enables lively voices when the source language is known
++        // and the target is Russian. Original VOT tries to detect the language
++        // from video metadata before requesting lively voices.
++        if (activeVoiceMode == VoiceMode.LIVELY && targetLanguage == "ru" && effectiveSourceLanguage == "auto") {
++            effectiveSourceLanguage = detectLanguageFromTitle(title) ?: "auto"
++        }
++        if (activeVoiceMode == VoiceMode.LIVELY && (targetLanguage != "ru" || effectiveSourceLanguage == "auto")) {
++            activeVoiceMode = VoiceMode.STANDARD
++            fellBackToStandard = true
++        }
++
++        onProgress(
++            TranslationProgress(
++                voiceMode = activeVoiceMode,
++                fallbackToStandard = fellBackToStandard,
++            )
++        )
+ 
+         repeat(MAX_TRANSLATION_ATTEMPTS) {
++            val useLivelyVoice = activeVoiceMode == VoiceMode.LIVELY
+             val activeSession = getSession()
+             val body = VotProto.encodeTranslationRequest(
+                 url = youtubeUrl,
+                 firstRequest = firstRequest,
+                 duration = if (durationSeconds > 0.0) durationSeconds else DEFAULT_DURATION,
+-                language = sourceLanguage,
++                language = effectiveSourceLanguage,
+                 responseLanguage = targetLanguage,
+                 videoTitle = title,
++                useLivelyVoice = useLivelyVoice,
+             )
+ 
++            val headers = secureHeaders("Vtrans", activeSession, body, PATH_TRANSLATE).toMutableMap()
++            if (useLivelyVoice && !oauthToken.isNullOrBlank()) {
++                headers["Authorization"] = "OAuth $oauthToken"
++            }
++
+             val responseBytes = requestBinary(
+                 path = PATH_TRANSLATE,
+                 body = body,
+                 method = "POST",
+-                extraHeaders = secureHeaders("Vtrans", activeSession, body, PATH_TRANSLATE),
++                extraHeaders = headers,
+             )
+             val response = VotProto.decodeTranslationResponse(responseBytes)
+             lastMessage = response.message
+@@ -94,15 +129,17 @@
+                     if (response.url.isBlank()) {
+                         error("VOT returned a finished status without an audio URL")
+                     }
++                    val usedVoiceMode = if (response.isLivelyVoice) VoiceMode.LIVELY else VoiceMode.STANDARD
+                     return@withContext TranslationResult(
+                         audioUrl = response.url,
+                         fallbackAudioUrls = buildAudioProxyUrls(response.url),
+                         detectedLanguage = response.language.takeIf { it.isNotBlank() },
++                        requestedVoiceMode = requestedVoiceMode,
++                        usedVoiceMode = usedVoiceMode,
+                     )
+                 }
+ 
+                 STATUS_WAITING, STATUS_LONG_WAITING -> {
+-                    // Yandex explicitly distinguishes the first request from polling.
+                     firstRequest = false
+                     val waitMs = if (retryAttempt > 0) {
+                         RETRY_INTERVAL_MS
+@@ -119,6 +156,8 @@
+                         waitMs = waitMs,
+                         serverRemainingSeconds = response.remainingTime,
+                         serverMessage = response.message,
++                        voiceMode = activeVoiceMode,
++                        fallbackToStandard = fellBackToStandard,
+                         onProgress = onProgress,
+                     )
+                 }
+@@ -128,20 +167,57 @@
+                         TranslationProgress(
+                             remainingSeconds = response.remainingTime.takeIf { it > 0 },
+                             serverMessage = response.message.takeIf { it.isNotBlank() },
++                            voiceMode = activeVoiceMode,
++                            fallbackToStandard = fellBackToStandard,
+                         )
+                     )
+                     if (!sentAudioFallback && youtubeUrl.startsWith("https://youtu.be/")) {
+                         requestAudioFallback(youtubeUrl, response.translationId)
+                         sentAudioFallback = true
+-                        // vot.js recursively starts translation again after fake-audio fallback.
+                         firstRequest = true
+                     } else {
+                         error("VOT requires source-audio upload for this video")
+                     }
+                 }
+ 
+-                STATUS_SESSION_REQUIRED -> error("VOT requires Yandex authorization for this video")
+-                STATUS_FAILED -> error(response.message.ifBlank { "Yandex could not translate this video" })
++                STATUS_SESSION_REQUIRED -> {
++                    if (activeVoiceMode == VoiceMode.LIVELY) {
++                        activeVoiceMode = VoiceMode.STANDARD
++                        fellBackToStandard = true
++                        firstRequest = true
++                        retryAttempt = 0
++                        sentAudioFallback = false
++                        onProgress(
++                            TranslationProgress(
++                                voiceMode = VoiceMode.STANDARD,
++                                fallbackToStandard = true,
++                                serverMessage = response.message.takeIf { it.isNotBlank() },
++                            )
++                        )
++                    } else {
++                        error("VOT requires Yandex authorization for this video")
++                    }
++                }
++
++                STATUS_FAILED -> {
++                    if (activeVoiceMode == VoiceMode.LIVELY && isLivelyUnavailableMessage(response.message)) {
++                        activeVoiceMode = VoiceMode.STANDARD
++                        fellBackToStandard = true
++                        firstRequest = true
++                        retryAttempt = 0
++                        sentAudioFallback = false
++                        onProgress(
++                            TranslationProgress(
++                                voiceMode = VoiceMode.STANDARD,
++                                fallbackToStandard = true,
++                                serverMessage = response.message.takeIf { it.isNotBlank() },
++                            )
++                        )
++                    } else {
++                        error(response.message.ifBlank { "Yandex could not translate this video" })
++                    }
++                }
++
+                 else -> error(
+                     buildString {
+                         append("Unknown VOT status: ").append(response.status)
+@@ -154,10 +230,38 @@
+         error(lastMessage.ifBlank { "Timed out waiting for voice-over translation" })
+     }
+ 
++    private fun isLivelyUnavailableMessage(message: String): Boolean {
++        val normalized = message.lowercase()
++        return normalized.contains("обычная озвучка") ||
++            normalized.contains("lively") ||
++            normalized.contains("жив") ||
++            normalized.contains("authorization") ||
++            normalized.contains("авториз")
++    }
++
++    private fun detectLanguageFromTitle(title: String): String? {
++        val text = title.trim()
++        if (text.length < MIN_DETECT_TEXT_LENGTH) return null
++        return runCatching {
++            val encoded = java.net.URLEncoder.encode(text, Charsets.UTF_8.name())
++            val request = Request.Builder()
++                .url("$DETECT_API_URL/detect?text=$encoded&service=yandexbrowser")
++                .get()
++                .build()
++            http.newCall(request).execute().use { response ->
++                if (!response.isSuccessful) return@use null
++                val json = JSONObject(response.body?.string().orEmpty())
++                json.optString("lang").takeIf { it.isNotBlank() && it != "auto" }
++            }
++        }.getOrNull()
++    }
++
+     private suspend fun delayWithProgress(
+         waitMs: Long,
+         serverRemainingSeconds: Int,
+         serverMessage: String,
++        voiceMode: VoiceMode,
++        fallbackToStandard: Boolean,
+         onProgress: (TranslationProgress) -> Unit,
+     ) {
+         var elapsedMs = 0L
+@@ -171,6 +275,8 @@
+                     remainingSeconds = remaining,
+                     delayed = knownEta != null && remaining == 0,
+                     serverMessage = serverMessage.takeIf { it.isNotBlank() },
++                    voiceMode = voiceMode,
++                    fallbackToStandard = fallbackToStandard,
+                 )
+             )
+ 
+@@ -485,6 +591,8 @@
+         private const val COMPONENT_VERSION = "26.6.4.760"
+         private const val HMAC_KEY = "bt8xH3VOlb4mqf0nqAibnDOoiPlXsisf"
+         private const val DEFAULT_DURATION = 310.0
++        private const val MIN_DETECT_TEXT_LENGTH = 35
++        private const val DETECT_API_URL = "https://translate-backend.transly.eu.cc/v2"
+ 
+         private const val PATH_SESSION = "/session/create"
+         private const val PATH_TRANSLATE = "/video-translation/translate"
+--- a/app/src/main/java/com/github/libretube/vot/VotAudioController.kt
++++ b/app/src/main/java/com/github/libretube/vot/VotAudioController.kt
+@@ -71,6 +71,9 @@
+         durationSeconds: Double,
+         sourceLanguage: String = "auto",
+         targetLanguage: String = "ru",
++        title: String = "",
++        voiceMode: VotApiClient.VoiceMode = VotApiClient.VoiceMode.STANDARD,
++        oauthToken: String? = null,
+         onProgress: (VotApiClient.TranslationProgress) -> Unit = {},
+     ): VotApiClient.TranslationResult {
+         release()
+@@ -81,6 +84,9 @@
+             durationSeconds = durationSeconds,
+             sourceLanguage = sourceLanguage,
+             targetLanguage = targetLanguage,
++            title = title,
++            voiceMode = voiceMode,
++            oauthToken = oauthToken,
+             onProgress = { progress ->
+                 handler.post {
+                     if (progressGeneration == requestGeneration) onProgress(progress)

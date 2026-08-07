@@ -18,6 +18,7 @@ internal object VotProto {
         val translationId: String = "",
         val language: String = "",
         val message: String = "",
+        val isLivelyVoice: Boolean = false,
     )
 
     data class SessionResponse(
@@ -53,6 +54,7 @@ internal object VotProto {
         language: String,
         responseLanguage: String,
         videoTitle: String,
+        useLivelyVoice: Boolean = false,
     ): ByteArray = Writer().apply {
         string(3, url)
         bool(5, firstRequest)
@@ -62,6 +64,7 @@ internal object VotProto {
         string(14, responseLanguage)
         int32(15, 1)
         int32(16, 2)
+        bool(18, useLivelyVoice)
         if (videoTitle.isNotBlank()) string(19, videoTitle)
     }.toByteArray()
 
@@ -89,6 +92,7 @@ internal object VotProto {
         var translationId = ""
         var language = ""
         var message = ""
+        var isLivelyVoice = false
 
         while (reader.hasRemaining()) {
             val tag = reader.readTag() ?: break
@@ -99,10 +103,11 @@ internal object VotProto {
                 7 -> translationId = reader.readString(tag.wireType)
                 8 -> language = reader.readString(tag.wireType)
                 9 -> message = reader.readString(tag.wireType)
+                10 -> isLivelyVoice = reader.readInt32(tag.wireType) != 0
                 else -> reader.skip(tag.wireType)
             }
         }
-        return TranslationResponse(url, status, remainingTime, translationId, language, message)
+        return TranslationResponse(url, status, remainingTime, translationId, language, message, isLivelyVoice)
     }
 
     private data class Tag(val fieldNumber: Int, val wireType: Int)
