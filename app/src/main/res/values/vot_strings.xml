@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="vot_voice_translation">Voice translation</string>
-    <string name="vot_requesting_translation">Preparing voice translation… Tap again to cancel.</string>
+    <string name="vot_requesting_translation">Requesting voice translation…</string>
+    <string name="vot_translation_processing">Video is being translated…</string>
+    <string name="vot_translation_eta">Video is being translated • %1$s remaining</string>
+    <string name="vot_translation_delayed">Video is being translated • Translation is slightly delayed</string>
     <string name="vot_translation_enabled">Voice translation enabled</string>
     <string name="vot_translation_disabled">Voice translation disabled</string>
     <string name="vot_translation_failed">Voice translation failed: %1$s</string>
     <string name="vot_live_not_supported">Voice translation for live streams is not enabled in this build</string>
+    <string name="vot_voice_mode_title">Translation voices</string>
+    <string name="vot_standard_voices_title">Standard voices</string>
+    <string name="vot_standard_voices_subtitle">Fast and high-quality voice-over</string>
+    <string name="vot_lively_voices_title">Lively voices</string>
+    <string name="vot_lively_voices_subtitle">Maximum similarity. As if everyone speaks Russian</string>
+    <string name="vot_start_translation">Enable</string>
+    <string name="vot_processing_standard">Translating video • Standard voices</string>
+    <string name="vot_processing_lively">Translating video • Lively voices</string>
+    <string name="vot_translation_eta_standard">Translating video • Standard voices • %1$s left</string>
+    <string name="vot_translation_eta_lively">Translating video • Lively voices • %1$s left</string>
+    <string name="vot_standard_enabled">Standard voices enabled</string>
+    <string name="vot_lively_enabled">Lively voices enabled</string>
+    <string name="vot_lively_fallback">Lively voices unavailable — using standard voices</string>
 </resources>
