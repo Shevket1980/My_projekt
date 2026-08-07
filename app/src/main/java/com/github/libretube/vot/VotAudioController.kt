@@ -20,6 +20,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.abs
 
+/** Plays VOT's translated audio as a second, synchronized audio track. */
 class VotAudioController(
     context: Context,
     private val mainPlayer: Player,
@@ -71,6 +72,7 @@ class VotAudioController(
         targetLanguage: String = "ru",
     ): VotApiClient.TranslationResult {
         release()
+
         val result = api.requestTranslation(
             youtubeUrl = "https://youtu.be/$videoId",
             durationSeconds = durationSeconds,
@@ -81,6 +83,7 @@ class VotAudioController(
 
         val translated = prepareResultAudio(result)
         currentCoroutineContext().ensureActive()
+
         translatedPlayer = translated
         originalVolume = mainPlayer.volume
         mainPlayer.volume = (mainPlayer.volume * ORIGINAL_AUDIO_DUCKING).coerceIn(0f, 1f)
@@ -90,6 +93,7 @@ class VotAudioController(
         translated.seekTo(mainPlayer.currentPosition.coerceAtLeast(0L))
         translated.playbackParameters = mainPlayer.playbackParameters
         syncPlayState()
+
         handler.removeCallbacks(driftSync)
         handler.post(driftSync)
         return result
@@ -106,11 +110,14 @@ class VotAudioController(
     }
 
     private suspend fun prepareResultAudio(result: VotApiClient.TranslationResult): ExoPlayer {
-        val candidates = listOfNotNull(result.audioUrl, result.fallbackAudioUrl).distinct()
+        val candidates = (listOf(result.audioUrl) + result.fallbackAudioUrls).distinct()
         var lastError: Throwable? = null
+
         for (audioUrl in candidates) {
             try {
-                return withTimeout(AUDIO_PREPARE_TIMEOUT_MS) { prepareTranslatedPlayer(audioUrl) }
+                return withTimeout(AUDIO_PREPARE_TIMEOUT_MS) {
+                    prepareTranslatedPlayer(audioUrl)
+                }
             } catch (error: TimeoutCancellationException) {
                 lastError = error
             } catch (error: CancellationException) {
@@ -120,6 +127,7 @@ class VotAudioController(
             }
             currentCoroutineContext().ensureActive()
         }
+
         throw IllegalStateException("Translated audio could not be loaded", lastError)
     }
 
