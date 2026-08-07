@@ -1,0 +1,3 @@
+LibreTube base: v31.4
+Integration: LibreTube-VOT r4
+Target voice-over language: Russian (ru)
