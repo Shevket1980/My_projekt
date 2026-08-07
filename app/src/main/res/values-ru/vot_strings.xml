@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vot_voice_translation">Голосовой перевод</string>
+    <string name="vot_requesting_translation">Готовлю голосовой перевод… Нажмите ещё раз, чтобы отменить.</string>
+    <string name="vot_translation_enabled">Голосовой перевод включён</string>
+    <string name="vot_translation_disabled">Голосовой перевод выключен</string>
+    <string name="vot_translation_failed">Ошибка голосового перевода: %1$s</string>
+    <string name="vot_live_not_supported">Перевод прямых эфиров в этой сборке пока не включён</string>
+</resources>
