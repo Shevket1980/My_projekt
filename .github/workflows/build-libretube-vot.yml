@@ -51,6 +51,8 @@ jobs:
           python3 integration/apply_vot_patch.py LibreTube
           python3 integration/apply_vot_ui_state.py LibreTube
           python3 integration/apply_vot_progress_r7.py LibreTube
+          patch -d LibreTube -p1 < integration/r8_voice_backend.patch
+          python3 integration/apply_vot_voice_modes.py LibreTube
 
       - name: Verify patch markers
         run: |
@@ -59,6 +61,10 @@ jobs:
           grep -q 'showVotProgress' LibreTube/app/src/main/java/com/github/libretube/ui/views/CustomExoPlayerView.kt
           grep -q 'delayWithProgress' LibreTube/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
           grep -q '@+id/vot_status' LibreTube/app/src/main/res/layout/exo_styled_player_control_view.xml
+          grep -q 'VoiceMode.LIVELY' LibreTube/app/src/main/java/com/github/libretube/ui/views/CustomExoPlayerView.kt
+          grep -q 'useLivelyVoice' LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
+          grep -q 'isLivelyVoice' LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
+          grep -q 'getVideoTitle' LibreTube/app/src/main/java/com/github/libretube/ui/interfaces/CustomPlayerCallback.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotAudioController.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
