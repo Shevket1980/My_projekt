@@ -47,11 +47,14 @@ jobs:
           python-version: '3.x'
 
       - name: Apply VOT integration
-        run: python3 integration/apply_vot_patch.py LibreTube
+        run: |
+          python3 integration/apply_vot_patch.py LibreTube
+          python3 integration/apply_vot_ui_state.py LibreTube
 
       - name: Verify patch markers
         run: |
           grep -q 'toggleVotTranslation' LibreTube/app/src/main/java/com/github/libretube/ui/views/CustomExoPlayerView.kt
+          grep -q '#BB86FC' LibreTube/app/src/main/java/com/github/libretube/ui/views/CustomExoPlayerView.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotApiClient.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotAudioController.kt
           test -f LibreTube/app/src/main/java/com/github/libretube/vot/VotProto.kt
