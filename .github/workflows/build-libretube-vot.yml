@@ -1,4 +1,4 @@
-name: Build LibreTube VOT APK
+name: Build LibreTube VOT
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -93,4 +93,80 @@ jobs:
           path: |
             LibreTube-VOT-v31.4-r9-debug.apk
             LibreTube-VOT-v31.4-r9-debug.apk.sha256
+          if-no-files-found: error
+
+  build-macos-m1:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate bundle metadata
+        run: plutil -lint macos/Info.plist
+
+      - name: Apply Swift 6 compatibility
+        run: python3 macos/patch_swift6.py
+
+      - name: Build native Apple Silicon app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="build/LibreTube VOT.app"
+          CONTENTS="$APP/Contents"
+          MACOS="$CONTENTS/MacOS"
+          mkdir -p "$MACOS"
+          cp macos/Info.plist "$CONTENTS/Info.plist"
+
+          SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+          xcrun swiftc \
+            -swift-version 5 \
+            -Xfrontend -strict-concurrency=minimal \
+            -O \
+            -whole-module-optimization \
+            -sdk "$SDKROOT" \
+            -target arm64-apple-macos13.0 \
+            -framework AppKit \
+            -framework WebKit \
+            -framework AVFoundation \
+            -framework CryptoKit \
+            macos/Sources/*.swift \
+            -o "$MACOS/LibreTubeVOT"
+
+          chmod +x "$MACOS/LibreTubeVOT"
+          codesign --force --deep --sign - --timestamp=none "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          file "$MACOS/LibreTubeVOT"
+          lipo -info "$MACOS/LibreTubeVOT"
+
+      - name: Package ZIP and DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist dmg-root
+          cp -R "build/LibreTube VOT.app" dmg-root/
+          ln -s /Applications dmg-root/Applications
+
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/LibreTube VOT.app" \
+            "dist/LibreTube-VOT-macOS-M1-arm64.zip"
+
+          hdiutil create \
+            -volname "LibreTube VOT" \
+            -srcfolder dmg-root \
+            -ov \
+            -format UDZO \
+            "dist/LibreTube-VOT-macOS-M1-arm64.dmg"
+
+          (cd dist && shasum -a 256 LibreTube-VOT-macOS-M1-arm64.zip LibreTube-VOT-macOS-M1-arm64.dmg > LibreTube-VOT-macOS-M1-arm64.sha256)
+          ls -lh dist
+
+      - name: Upload macOS M1 app
+        uses: actions/upload-artifact@v4
+        with:
+          name: LibreTube-VOT-macOS-M1-arm64
+          path: |
+            dist/LibreTube-VOT-macOS-M1-arm64.zip
+            dist/LibreTube-VOT-macOS-M1-arm64.dmg
+            dist/LibreTube-VOT-macOS-M1-arm64.sha256
           if-no-files-found: error
