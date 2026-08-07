@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vot_voice_translation">Voice translation</string>
+    <string name="vot_requesting_translation">Preparing voice translation… Tap again to cancel.</string>
+    <string name="vot_translation_enabled">Voice translation enabled</string>
+    <string name="vot_translation_disabled">Voice translation disabled</string>
+    <string name="vot_translation_failed">Voice translation failed: %1$s</string>
+    <string name="vot_live_not_supported">Voice translation for live streams is not enabled in this build</string>
+</resources>
